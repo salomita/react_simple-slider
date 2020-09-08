@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from "styled-components";
 
 const slides = [
@@ -87,74 +87,46 @@ const Dots = ({ activeIndex, handleClick }) => (
   </StyledDots>
 )
 
-const Arrow = ({ direction, handleClick }) =>
-  <StyledArrow direction={direction} onClick={handleClick}>{direction === "left" ? "<" : ">"}</StyledArrow>;
+const Arrow = ({ direction, handleClick }) => (
+  <StyledArrow direction={direction} onClick={handleClick}>{direction === "left" ? "<" : ">"}</StyledArrow>
+)
 
-class Slider extends Component {
-  constructor(props) {
-    super(props);
+const Slider = () => {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [translate, setTranslate] = useState(window.innerWidth);
+  const [transition, setTransition] = useState(0.5);
+  const [slide, setSlides] = useState([slides[slides.length - 1], slides[0], slides[1]]);
+  const getWidth = () => window.innerWidth;
 
-    this.state = {
-      activeIndex: 0,
-      translate: this.getWidth(),
-      transition: 0.5,
-      slides: [slides[slides.length - 1], slides[0], slides[1]]
-    };
+  useEffect(() => {
+    const timer = setInterval(() => { nextSlide() }, 3000);
+    const transitionEnd = window.addEventListener('transitionend', createSlides);
 
-    this.prevSlide = this.prevSlide.bind(this);
-    this.nextSlide = this.nextSlide.bind(this);
-    this.gotoSlide = this.gotoSlide.bind(this);
-    this.createSlides = this.createSlides.bind(this);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('transitionend', transitionEnd);  
+    }
+  });
+
+  function prevSlide() {
+    setActiveIndex(activeIndex === 0 ? slides.length - 1 : activeIndex - 1);
+    setTranslate(0);
+    setTransition(0.5);
   }
 
-  componentDidMount() {
-    this.timer = setInterval(() => { this.nextSlide() }, 3000);
-    this.transitionEnd = window.addEventListener('transitionend', this.createSlides);
+  function nextSlide() {
+    setActiveIndex(activeIndex === slides.length - 1 ? 0 : activeIndex + 1);
+    setTranslate(translate + getWidth())
+    setTransition(0.5);
   }
 
-  componentWillUnmount() {
-    clearInterval(this.timer);
-    window.removeEventListener('transitionend', this.transitionEnd);
+  function gotoSlide(number) {
+    setActiveIndex(number);
+    setTranslate(number * getWidth());
+    setTransition(0.5);
   }
 
-  componentDidUpdate(prevProps, prevState) {
-  }
-
-  getWidth = () => window.innerWidth
-
-  prevSlide() {
-    const { activeIndex } = this.state;
-
-    this.setState({
-      ...this.state,
-      activeIndex: activeIndex === 0 ? slides.length - 1 : activeIndex - 1,
-      transition: 0.5,
-      translate: 0
-    });
-  }
-
-  nextSlide() {
-    const { activeIndex, translate } = this.state;
-
-    this.setState({
-      ...this.state,
-      activeIndex: activeIndex === slides.length - 1 ? 0 : activeIndex + 1,
-      transition: 0.5,
-      translate: translate + this.getWidth()
-    });
-  }
-
-  gotoSlide(number) {
-    this.setState({
-      ...this.state,
-      activeIndex: number,
-      transition: 0.5,
-      translate: number * this.getWidth()
-    });
-  }
-
-  createSlides() {
-    const { activeIndex } = this.state;
+  function createSlides() {
     let images = [];
 
     if (activeIndex === slides.length - 1) {
@@ -165,30 +137,23 @@ class Slider extends Component {
       images = slides.slice(activeIndex - 1, activeIndex + 2)
     }
 
-    this.setState({
-      ...this.state,
-      translate: this.getWidth(),
-      transition: 0,
-      slides: images
-    });
+    setTransition(0);
+    setTranslate(getWidth());
+    setSlides(images)
   }
 
-  render() {
-    const { activeIndex, translate, transition, slides } = this.state;
-
-    return (
-      <StyledWrapper>
-        <StyledSlider width={this.getWidth()} translate={translate} transition={transition}>
-          {slides.map((slide, i) => (
-            <Slide key={slide + i} content={slide} width={this.getWidth()} />
-          ))}
-        </StyledSlider>
-        <Arrow direction="left" handleClick={() => { clearInterval(this.timer); this.prevSlide(); }} />
-        <Arrow direction="right" handleClick={() => { clearInterval(this.timer); this.nextSlide(); }} />
-        <Dots activeIndex={activeIndex} handleClick={this.gotoSlide} />
-      </StyledWrapper>
-    );
-  }
+  return (
+    <StyledWrapper>
+      <StyledSlider width={getWidth()} translate={translate} transition={transition}>
+        {slide.map((slide, i) => (
+          <Slide key={slide + i} content={slide} width={getWidth()} />
+        ))}
+      </StyledSlider>
+      <Arrow direction="left" handleClick={() => { prevSlide(); }} />
+      <Arrow direction="right" handleClick={() => { nextSlide(); }} />
+      <Dots activeIndex={activeIndex} handleClick={gotoSlide} />
+    </StyledWrapper>
+  );
 }
 
 export default Slider;
